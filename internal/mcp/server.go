@@ -183,8 +183,3 @@ func joinLines(lines []string) string {
 	return result
 }
 
-// registerRemoteTools is implemented in tools_remote.go
-func registerRemoteTools(server *gomcp.Server, svc *Service) {
-	// TODO: implemented in Task 11
-}
-
