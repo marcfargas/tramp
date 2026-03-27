@@ -1,0 +1,81 @@
+package mcp
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/marcfargas/tramp/internal/pool"
+	"github.com/marcfargas/tramp/internal/target"
+)
+
+// Service holds shared state for all MCP tool handlers.
+type Service struct {
+	Manager *target.Manager
+	Pool    *pool.Pool
+}
+
+// TargetAdd adds a new dynamic target.
+func (s *Service) TargetAdd(ctx context.Context, name string, config target.TargetConfig) error {
+	// Validate config
+	switch config.Type {
+	case "ssh":
+		if config.Host == "" {
+			return fmt.Errorf("ssh target requires host")
+		}
+	case "docker":
+		if config.Container == "" {
+			return fmt.Errorf("docker target requires container")
+		}
+	default:
+		return fmt.Errorf("unknown type %q (expected ssh or docker)", config.Type)
+	}
+
+	return s.Manager.Add(name, config)
+}
+
+// TargetSwitch switches to a target, eagerly connecting to validate.
+func (s *Service) TargetSwitch(ctx context.Context, name string) error {
+	if name == "local" {
+		return s.Manager.Switch("local")
+	}
+
+	tgt := s.Manager.Get(name)
+	if tgt == nil {
+		return fmt.Errorf("target %q not found", name)
+	}
+
+	// Eager connect — validate the target works before switching
+	_, err := s.Pool.Get(ctx, name, tgt.Config)
+	if err != nil {
+		return fmt.Errorf("connecting to %q: %w", name, err)
+	}
+
+	return s.Manager.Switch(name)
+}
+
+// TargetRemove removes a dynamic target and closes its connection.
+func (s *Service) TargetRemove(name string) error {
+	if s.Pool != nil {
+		s.Pool.Close(name)
+	}
+	return s.Manager.Remove(name)
+}
+
+// TargetList returns all targets with their current state.
+func (s *Service) TargetList() []target.Target {
+	return s.Manager.List()
+}
+
+// TargetStatus returns info about the active target.
+func (s *Service) TargetStatus() (*target.Target, string) {
+	tgt := s.Manager.Current()
+	if tgt == nil {
+		return nil, "No active target (local mode)"
+	}
+	status := s.Pool.Status()
+	state := "unknown"
+	if st, ok := status[tgt.Name]; ok {
+		state = string(st)
+	}
+	return tgt, state
+}
