@@ -11,6 +11,7 @@ services:
       - PASSWORD_ACCESS=true
       - USER_PASSWORD=testpass
       - USER_NAME=testuser
+      - PUBLIC_KEY=${PUBLIC_KEY:-}
     ports:
       - "2222:2222"
     tmpfs:

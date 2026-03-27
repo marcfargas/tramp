@@ -35,19 +35,17 @@ jobs:
         if: runner.os == 'Linux'
         run: go test ./... -race -short -count=1
 
-  integration:
-    name: Integration (${{ matrix.transport }}-${{ matrix.shell }})
+  integration-docker:
+    name: Integration (docker-${{ matrix.shell }})
     runs-on: ubuntu-latest
     needs: test
     strategy:
       fail-fast: false
       matrix:
         include:
-          - transport: docker
-            shell: bash
+          - shell: bash
             service: docker-bash
-          - transport: docker
-            shell: pwsh
+          - shell: pwsh
             service: docker-pwsh
 
     steps:
@@ -68,6 +66,53 @@ jobs:
         env:
           TRAMP_TEST_DOCKER_CONTAINER: integration-${{ matrix.service }}-1
         run: go test -tags integration -count=1 -v ./test/integration/ -run "Docker"
+
+      - name: Stop containers
+        if: always()
+        working-directory: test/integration
+        run: docker compose down
+
+  integration-ssh:
+    name: Integration (ssh-bash)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Generate SSH key pair
+        run: |
+          ssh-keygen -t ed25519 -f /tmp/tramp-test-key -N "" -q
+          echo "TRAMP_TEST_SSH_KEY=/tmp/tramp-test-key" >> "$GITHUB_ENV"
+
+      - name: Start SSH container
+        working-directory: test/integration
+        run: |
+          export PUBLIC_KEY="$(cat /tmp/tramp-test-key.pub)"
+          docker compose up -d ssh-bash
+
+      - name: Wait for SSH ready
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                   -i /tmp/tramp-test-key -p 2222 testuser@localhost echo ok 2>/dev/null; then
+              echo "SSH ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "SSH not ready after 30s"
+          exit 1
+
+      - name: Run SSH integration tests
+        env:
+          TRAMP_TEST_SSH_HOST: testuser@localhost
+          TRAMP_TEST_SSH_KEY: /tmp/tramp-test-key
+        run: go test -tags integration -count=1 -v ./test/integration/ -run "SSH"
 
       - name: Stop containers
         if: always()

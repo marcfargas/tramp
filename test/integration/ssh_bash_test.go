@@ -16,13 +16,15 @@ func sshBashConfig() target.TargetConfig {
 	if host == "" {
 		host = "testuser@localhost"
 	}
+	keyFile := os.Getenv("TRAMP_TEST_SSH_KEY")
 	port := 2222
 	return target.TargetConfig{
-		Type:  "ssh",
-		Host:  host,
-		Port:  port,
-		Shell: "bash",
-		Cwd:   "/tmp",
+		Type:         "ssh",
+		Host:         host,
+		Port:         port,
+		Shell:        "bash",
+		Cwd:          "/tmp",
+		IdentityFile: keyFile,
 	}
 }
 
