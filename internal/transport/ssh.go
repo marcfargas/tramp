@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -359,6 +360,45 @@ func buildAuthMethods(identityFile string) ([]ssh.AuthMethod, error) {
 		return nil, fmt.Errorf("no SSH auth methods available (no agent, no keys)")
 	}
 	return methods, nil
+}
+
+// ForwardPort creates a local TCP listener that forwards to a remote address via SSH.
+// Returns the listener (caller must close it) and starts forwarding in the background.
+func (t *SSHTransport) ForwardPort(localAddr, remoteAddr string) (net.Listener, error) {
+	if t.client == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+
+	listener, err := net.Listen("tcp", localAddr)
+	if err != nil {
+		return nil, fmt.Errorf("listen on %s: %w", localAddr, err)
+	}
+
+	go func() {
+		for {
+			local, err := listener.Accept()
+			if err != nil {
+				return // listener closed
+			}
+			go func(local net.Conn) {
+				remote, err := t.client.Dial("tcp", remoteAddr)
+				if err != nil {
+					local.Close()
+					return
+				}
+				go func() {
+					defer remote.Close()
+					io.Copy(remote, local)
+				}()
+				go func() {
+					defer local.Close()
+					io.Copy(local, remote)
+				}()
+			}(local)
+		}
+	}()
+
+	return listener, nil
 }
 
 // sshAgentConn is implemented per-platform in agent_windows.go and agent_unix.go.
