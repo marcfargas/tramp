@@ -324,20 +324,29 @@ func parseSSHHost(hostStr string) (user, host string) {
 // buildAuthMethods creates SSH auth methods from available sources.
 func buildAuthMethods(identityFile string) ([]ssh.AuthMethod, error) {
 	var methods []ssh.AuthMethod
+	var tried []string
 
 	// 1. Try SSH agent
 	if agentConn := sshAgentConn(); agentConn != nil {
 		methods = append(methods, ssh.PublicKeysCallback(agent.NewClient(agentConn).Signers))
+		tried = append(tried, "agent: connected")
+	} else {
+		tried = append(tried, "agent: not available")
 	}
 
 	// 2. Try identity file
 	if identityFile != "" {
 		expanded := expandHome(identityFile)
 		key, err := os.ReadFile(expanded)
-		if err == nil {
+		if err != nil {
+			tried = append(tried, fmt.Sprintf("key %s: %v", expanded, err))
+		} else {
 			signer, err := ssh.ParsePrivateKey(key)
-			if err == nil {
+			if err != nil {
+				tried = append(tried, fmt.Sprintf("key %s: parse error: %v", expanded, err))
+			} else {
 				methods = append(methods, ssh.PublicKeys(signer))
+				tried = append(tried, fmt.Sprintf("key %s: loaded", expanded))
 			}
 		}
 	}
@@ -351,13 +360,15 @@ func buildAuthMethods(identityFile string) ([]ssh.AuthMethod, error) {
 		}
 		signer, err := ssh.ParsePrivateKey(key)
 		if err != nil {
+			tried = append(tried, fmt.Sprintf("key %s: parse error: %v", path, err))
 			continue
 		}
 		methods = append(methods, ssh.PublicKeys(signer))
+		tried = append(tried, fmt.Sprintf("key %s: loaded", path))
 	}
 
 	if len(methods) == 0 {
-		return nil, fmt.Errorf("no SSH auth methods available (no agent, no keys)")
+		return nil, fmt.Errorf("no SSH auth methods available (tried: %s)", strings.Join(tried, "; "))
 	}
 	return methods, nil
 }
