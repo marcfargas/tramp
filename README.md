@@ -6,34 +6,33 @@ The agent stays local. Tools execute remotely.
 
 ## Install
 
-### From GitHub Releases
-
-Download the latest binary for your platform from [Releases](https://github.com/marcfargas/tramp/releases), then:
-
-```bash
-# Linux/macOS
-chmod +x tramp
-sudo mv tramp /usr/local/bin/
-
-# Windows — move tramp.exe somewhere in your PATH
-```
-
-### From Source
+### One-liner (Go required)
 
 ```bash
 go install github.com/marcfargas/tramp/cmd/tramp@latest
-```
-
-### Add to Claude Code
-
-```bash
 claude mcp add tramp -- tramp serve
 ```
 
-Or with a full path if not in PATH:
+### From GitHub Releases
+
+Download the binary for your platform from [Releases](https://github.com/marcfargas/tramp/releases):
 
 ```bash
-claude mcp add tramp -- /path/to/tramp serve
+# Linux (amd64)
+curl -L https://github.com/marcfargas/tramp/releases/latest/download/tramp_0.1.0_linux_amd64.tar.gz | tar xz
+sudo mv tramp /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -L https://github.com/marcfargas/tramp/releases/latest/download/tramp_0.1.0_darwin_arm64.tar.gz | tar xz
+sudo mv tramp /usr/local/bin/
+
+# Windows — download the zip from Releases, extract, add to PATH
+```
+
+Then add to Claude Code:
+
+```bash
+claude mcp add tramp -- tramp serve
 ```
 
 ## Quick Start
