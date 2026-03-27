@@ -18,15 +18,19 @@ func mockFactory() pool.TransportFactory {
 
 type mockTransportForMCP struct{}
 
-func (m *mockTransportForMCP) Type() transport.TransportType    { return transport.TransportSSH }
-func (m *mockTransportForMCP) State() transport.TransportState  { return transport.StateConnected }
+func (m *mockTransportForMCP) Type() transport.TransportType     { return transport.TransportSSH }
+func (m *mockTransportForMCP) State() transport.TransportState   { return transport.StateConnected }
 func (m *mockTransportForMCP) Connect(ctx context.Context) error { return nil }
-func (m *mockTransportForMCP) Close() error                     { return nil }
+func (m *mockTransportForMCP) Close() error                      { return nil }
 func (m *mockTransportForMCP) Exec(ctx context.Context, cmd string, opts *transport.ExecOptions) (*transport.ExecResult, error) {
 	return &transport.ExecResult{Stdout: "ok", ExitCode: 0}, nil
 }
-func (m *mockTransportForMCP) ReadFile(ctx context.Context, path string) ([]byte, error)       { return nil, nil }
-func (m *mockTransportForMCP) WriteFile(ctx context.Context, path string, content []byte) error { return nil }
+func (m *mockTransportForMCP) ReadFile(ctx context.Context, path string) ([]byte, error) {
+	return nil, nil
+}
+func (m *mockTransportForMCP) WriteFile(ctx context.Context, path string, content []byte) error {
+	return nil
+}
 func (m *mockTransportForMCP) Info() *transport.RemoteInfo {
 	return &transport.RemoteInfo{Shell: "bash", Platform: "linux", Arch: "x86_64", Homedir: "/home/user"}
 }

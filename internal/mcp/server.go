@@ -176,4 +176,3 @@ func toolError(msg string) *gomcp.CallToolResult {
 func joinLines(lines []string) string {
 	return strings.Join(lines, "\n")
 }
-

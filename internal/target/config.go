@@ -3,9 +3,9 @@ package target
 
 import (
 	"encoding/json"
-	"maps"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 )
 

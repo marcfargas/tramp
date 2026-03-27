@@ -39,7 +39,7 @@ func NewSSHTransport(cfg target.TargetConfig) *SSHTransport {
 	}
 }
 
-func (t *SSHTransport) Type() TransportType  { return TransportSSH }
+func (t *SSHTransport) Type() TransportType   { return TransportSSH }
 func (t *SSHTransport) State() TransportState { return t.state }
 func (t *SSHTransport) Info() *RemoteInfo     { return t.info }
 

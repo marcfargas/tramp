@@ -19,7 +19,7 @@ type mockTransport struct {
 	closeCount   int
 }
 
-func (m *mockTransport) Type() transport.TransportType  { return transport.TransportSSH }
+func (m *mockTransport) Type() transport.TransportType   { return transport.TransportSSH }
 func (m *mockTransport) State() transport.TransportState { return m.state }
 func (m *mockTransport) Connect(ctx context.Context) error {
 	m.connectCount++
@@ -37,10 +37,10 @@ func (m *mockTransport) Close() error {
 func (m *mockTransport) Exec(ctx context.Context, cmd string, opts *transport.ExecOptions) (*transport.ExecResult, error) {
 	return &transport.ExecResult{Stdout: "ok", ExitCode: 0}, nil
 }
-func (m *mockTransport) ReadFile(ctx context.Context, path string) ([]byte, error)       { return nil, nil }
+func (m *mockTransport) ReadFile(ctx context.Context, path string) ([]byte, error)        { return nil, nil }
 func (m *mockTransport) WriteFile(ctx context.Context, path string, content []byte) error { return nil }
-func (m *mockTransport) Info() *transport.RemoteInfo { return &transport.RemoteInfo{Shell: "bash"} }
-func (m *mockTransport) HealthCheck(ctx context.Context) error { return m.healthErr }
+func (m *mockTransport) Info() *transport.RemoteInfo                                      { return &transport.RemoteInfo{Shell: "bash"} }
+func (m *mockTransport) HealthCheck(ctx context.Context) error                            { return m.healthErr }
 
 func TestPoolGetConnection(t *testing.T) {
 	mock := &mockTransport{}

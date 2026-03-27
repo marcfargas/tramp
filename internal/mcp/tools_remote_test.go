@@ -16,10 +16,10 @@ type mockTransportRemote struct {
 	execResult  *transport.ExecResult
 }
 
-func (m *mockTransportRemote) Type() transport.TransportType    { return transport.TransportSSH }
+func (m *mockTransportRemote) Type() transport.TransportType     { return transport.TransportSSH }
 func (m *mockTransportRemote) State() transport.TransportState   { return transport.StateConnected }
 func (m *mockTransportRemote) Connect(ctx context.Context) error { return nil }
-func (m *mockTransportRemote) Close() error                     { return nil }
+func (m *mockTransportRemote) Close() error                      { return nil }
 func (m *mockTransportRemote) Exec(ctx context.Context, cmd string, opts *transport.ExecOptions) (*transport.ExecResult, error) {
 	m.lastCmd = cmd
 	if m.execResult != nil {

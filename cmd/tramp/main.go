@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	gomcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	trampmcp "github.com/marcfargas/tramp/internal/mcp"
+	gomcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func main() {
