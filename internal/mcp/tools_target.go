@@ -3,15 +3,27 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"net"
+	"sync"
 
 	"github.com/marcfargas/tramp/internal/pool"
 	"github.com/marcfargas/tramp/internal/target"
 )
 
+// ForwardEntry tracks an active port forward.
+type ForwardEntry struct {
+	LocalAddr  string
+	RemoteAddr string
+	Target     string
+	Listener   net.Listener
+}
+
 // Service holds shared state for all MCP tool handlers.
 type Service struct {
-	Manager *target.Manager
-	Pool    *pool.Pool
+	Manager  *target.Manager
+	Pool     *pool.Pool
+	forwards map[string]*ForwardEntry // keyed by localAddr
+	fwdMu    sync.Mutex
 }
 
 // TargetAdd adds a new dynamic target.

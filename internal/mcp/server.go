@@ -24,6 +24,7 @@ func NewServer(svc *Service) *gomcp.Server {
 
 	registerTargetTools(server, svc)
 	registerRemoteTools(server, svc)
+	registerForwardTools(server, svc)
 	registerContextResource(server, svc)
 
 	return server
@@ -39,8 +40,9 @@ func NewService(projectDir string) *Service {
 	p := pool.New(factory)
 
 	svc := &Service{
-		Manager: mgr,
-		Pool:    p,
+		Manager:  mgr,
+		Pool:     p,
+		forwards: make(map[string]*ForwardEntry),
 	}
 
 	// Load config files
