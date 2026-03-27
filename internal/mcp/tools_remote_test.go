@@ -56,12 +56,15 @@ func TestRemoteBash(t *testing.T) {
 	}
 	svc := setupTestService(mock)
 
-	result, err := svc.RemoteBash(context.Background(), "echo hello", 0)
+	result, name, err := svc.RemoteBash(context.Background(), "", "echo hello", 0)
 	if err != nil {
 		t.Fatalf("RemoteBash failed: %v", err)
 	}
 	if result.Stdout != "hello\n" {
 		t.Errorf("Stdout = %q, want %q", result.Stdout, "hello\n")
+	}
+	if name != "dev" {
+		t.Errorf("target name = %q, want %q", name, "dev")
 	}
 }
 
@@ -69,9 +72,29 @@ func TestRemoteBashNoTarget(t *testing.T) {
 	mgr := target.NewManager()
 	svc := &Service{Manager: mgr}
 
-	_, err := svc.RemoteBash(context.Background(), "echo hello", 0)
+	_, _, err := svc.RemoteBash(context.Background(), "", "echo hello", 0)
 	if err == nil {
 		t.Error("expected error with no active target")
+	}
+}
+
+func TestRemoteBashExplicitTarget(t *testing.T) {
+	mock := &mockTransportRemote{
+		execResult: &transport.ExecResult{Stdout: "hello\n", ExitCode: 0},
+	}
+	svc := setupTestService(mock)
+	// Don't switch — use explicit target
+	svc.Manager.Switch("local")
+
+	result, name, err := svc.RemoteBash(context.Background(), "dev", "echo hello", 0)
+	if err != nil {
+		t.Fatalf("RemoteBash with explicit target failed: %v", err)
+	}
+	if result.Stdout != "hello\n" {
+		t.Errorf("Stdout = %q, want %q", result.Stdout, "hello\n")
+	}
+	if name != "dev" {
+		t.Errorf("target name = %q, want %q", name, "dev")
 	}
 }
 
@@ -81,7 +104,7 @@ func TestRemoteRead(t *testing.T) {
 	}
 	svc := setupTestService(mock)
 
-	content, err := svc.RemoteRead(context.Background(), "/home/user/file.txt", 0, 0)
+	content, err := svc.RemoteRead(context.Background(), "", "/home/user/file.txt", 0, 0)
 	if err != nil {
 		t.Fatalf("RemoteRead failed: %v", err)
 	}
@@ -94,7 +117,7 @@ func TestRemoteWrite(t *testing.T) {
 	mock := &mockTransportRemote{}
 	svc := setupTestService(mock)
 
-	err := svc.RemoteWrite(context.Background(), "/home/user/file.txt", "new content")
+	err := svc.RemoteWrite(context.Background(), "", "/home/user/file.txt", "new content")
 	if err != nil {
 		t.Fatalf("RemoteWrite failed: %v", err)
 	}
@@ -109,11 +132,10 @@ func TestRemoteEdit(t *testing.T) {
 	}
 	svc := setupTestService(mock)
 
-	err := svc.RemoteEdit(context.Background(), "/home/user/file.txt", "hello", "goodbye", false)
+	err := svc.RemoteEdit(context.Background(), "", "/home/user/file.txt", "hello", "goodbye", false)
 	if err != nil {
 		t.Fatalf("RemoteEdit failed: %v", err)
 	}
-	// Should replace first occurrence only
 	if string(mock.writeResult) != "goodbye world, hello universe" {
 		t.Errorf("edited = %q, want %q", string(mock.writeResult), "goodbye world, hello universe")
 	}
@@ -125,7 +147,7 @@ func TestRemoteEditAll(t *testing.T) {
 	}
 	svc := setupTestService(mock)
 
-	err := svc.RemoteEdit(context.Background(), "/home/user/file.txt", "hello", "goodbye", true)
+	err := svc.RemoteEdit(context.Background(), "", "/home/user/file.txt", "hello", "goodbye", true)
 	if err != nil {
 		t.Fatalf("RemoteEdit failed: %v", err)
 	}
@@ -140,7 +162,7 @@ func TestRemoteEditNotFound(t *testing.T) {
 	}
 	svc := setupTestService(mock)
 
-	err := svc.RemoteEdit(context.Background(), "/home/user/file.txt", "nonexistent", "replacement", false)
+	err := svc.RemoteEdit(context.Background(), "", "/home/user/file.txt", "nonexistent", "replacement", false)
 	if err == nil {
 		t.Error("expected error when old_string not found")
 	}
