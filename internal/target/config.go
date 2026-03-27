@@ -3,6 +3,7 @@ package target
 
 import (
 	"encoding/json"
+	"maps"
 	"errors"
 	"fmt"
 	"os"
@@ -69,9 +70,7 @@ func MergeConfigs(global, project *Config) *Config {
 	// Start with global
 	if global != nil {
 		merged.Default = global.Default
-		for k, v := range global.Targets {
-			merged.Targets[k] = v
-		}
+		maps.Copy(merged.Targets, global.Targets)
 	}
 
 	// Project overrides
@@ -79,9 +78,7 @@ func MergeConfigs(global, project *Config) *Config {
 		if project.Default != "" {
 			merged.Default = project.Default
 		}
-		for k, v := range project.Targets {
-			merged.Targets[k] = v
-		}
+		maps.Copy(merged.Targets, project.Targets)
 	}
 
 	return merged
