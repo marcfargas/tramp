@@ -1,0 +1,10 @@
+{
+  "name": "tramp",
+  "version": "0.1.0",
+  "description": "TRAMP-like transparent remote execution — route file and shell operations to SSH/Docker targets",
+  "author": {
+    "name": "Marc Fargas",
+    "url": "https://github.com/marcfargas"
+  },
+  "license": "LGPL-3.0"
+}

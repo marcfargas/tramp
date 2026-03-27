@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tramp": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/bin/bootstrap.sh",
+      "args": ["serve"]
+    }
+  }
+}
