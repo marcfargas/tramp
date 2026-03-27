@@ -46,20 +46,25 @@ func NewService(projectDir string) *Service {
 		forwards:   make(map[string]*ForwardEntry),
 	}
 
-	// Load config files
-	loadConfigs(mgr, projectDir)
+	// Load config files and auto-connect to default target
+	cfg := loadConfigs(mgr, projectDir)
+	if cfg.Default != "" {
+		// Best-effort auto-connect — don't fail startup if it doesn't work
+		_ = svc.TargetSwitch(context.Background(), cfg.Default)
+	}
 
 	return svc
 }
 
-// loadConfigs loads global and project tramp.json files.
-func loadConfigs(mgr *target.Manager, projectDir string) {
+// loadConfigs loads global and project tramp.json files. Returns the merged config.
+func loadConfigs(mgr *target.Manager, projectDir string) *target.Config {
 	home, _ := os.UserHomeDir()
 	globalPath := filepath.Join(home, ".claude", "tramp.json")
 	globalCfg, _ := target.LoadConfigFromFile(globalPath)
 	projectCfg, _ := target.LoadConfigFromFile(filepath.Join(projectDir, ".claude", "tramp.json"))
 	merged := target.MergeConfigs(globalCfg, projectCfg)
 	mgr.LoadFromConfig(merged)
+	return merged
 }
 
 // registerTargetTools registers target_add, target_switch, target_remove, target_list, target_status.
