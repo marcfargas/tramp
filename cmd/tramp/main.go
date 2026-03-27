@@ -1,18 +1,49 @@
-// cmd/tramp/main.go
 package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+
+	gomcp "github.com/modelcontextprotocol/go-sdk/mcp"
+	trampmcp "github.com/marcfargas/tramp/internal/mcp"
 )
 
 func main() {
 	if len(os.Args) < 2 || os.Args[1] != "serve" {
-		log.Fatal("Usage: tramp serve")
+		fmt.Fprintln(os.Stderr, "Usage: tramp serve")
+		os.Exit(1)
 	}
 
-	ctx := context.Background()
-	_ = ctx
-	log.Println("tramp MCP server starting...")
+	// Determine project directory (cwd)
+	projectDir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Cannot determine working directory: %v", err)
+	}
+
+	// Create service with config loading
+	svc := trampmcp.NewService(projectDir)
+
+	// Create MCP server
+	server := trampmcp.NewServer(svc)
+
+	// Handle graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		svc.Pool.CloseAll()
+		cancel()
+	}()
+
+	// Run MCP server over stdio
+	if err := server.Run(ctx, &gomcp.StdioTransport{}); err != nil {
+		log.Fatalf("MCP server error: %v", err)
+	}
 }
