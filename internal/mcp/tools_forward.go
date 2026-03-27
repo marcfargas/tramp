@@ -86,14 +86,20 @@ func (s *Service) ForwardStop(localAddr string) error {
 func registerForwardTools(server *gomcp.Server, svc *Service) {
 	type ForwardPortInput struct {
 		Target     string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
-		LocalPort  string `json:"local_port" jsonschema:"local port number to listen on (e.g. 8080)"`
-		RemoteAddr string `json:"remote_addr" jsonschema:"remote address to forward to (e.g. localhost:5432)"`
+		LocalPort  string `json:"local_port" jsonschema:"local port to listen on (e.g. 5901)"`
+		RemoteHost string `json:"remote_host" jsonschema:"remote host to forward to (default: 127.0.0.1)"`
+		RemotePort string `json:"remote_port" jsonschema:"remote port to forward to (e.g. 5432)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "forward_port",
-		Description: "Forward a local port to a remote address via SSH tunnel. SSH targets only. Use forward_stop to close.",
+		Description: "Forward a local port to a remote host:port via SSH tunnel. SSH targets only. Example: local_port=5901, remote_host=127.0.0.1, remote_port=5901. Use forward_stop to close.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args ForwardPortInput) (*gomcp.CallToolResult, any, error) {
-		msg, err := svc.ForwardPort(ctx, args.Target, args.LocalPort, args.RemoteAddr)
+		remoteHost := args.RemoteHost
+		if remoteHost == "" {
+			remoteHost = "127.0.0.1"
+		}
+		remoteAddr := remoteHost + ":" + args.RemotePort
+		msg, err := svc.ForwardPort(ctx, args.Target, args.LocalPort, remoteAddr)
 		if err != nil {
 			return toolError(err.Error()), nil, nil
 		}
