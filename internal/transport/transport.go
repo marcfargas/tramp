@@ -2,7 +2,10 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"io"
+
+	"github.com/marcfargas/tramp/internal/target"
 )
 
 type TransportType string
@@ -49,4 +52,16 @@ type Transport interface {
 	WriteFile(ctx context.Context, path string, content []byte) error
 	Info() *RemoteInfo
 	HealthCheck(ctx context.Context) error
+}
+
+// NewTransport creates the appropriate transport for a target config.
+func NewTransport(cfg target.TargetConfig) (Transport, error) {
+	switch cfg.Type {
+	case "ssh":
+		return NewSSHTransport(cfg), nil
+	case "docker":
+		return NewDockerTransport(cfg), nil
+	default:
+		return nil, fmt.Errorf("unknown transport type: %q", cfg.Type)
+	}
 }
