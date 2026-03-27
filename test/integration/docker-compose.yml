@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  ssh-bash:
+    image: linuxserver/openssh-server:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=testpass
+      - USER_NAME=testuser
+    ports:
+      - "2222:2222"
+    tmpfs:
+      - /tmp
+
+  ssh-pwsh:
+    image: mcr.microsoft.com/powershell:latest
+    command: >
+      pwsh -NoProfile -Command "
+        apt-get update && apt-get install -y openssh-server;
+        mkdir -p /run/sshd;
+        echo 'testuser:testpass' | chpasswd;
+        useradd -m -s /usr/bin/pwsh testuser || true;
+        echo 'testuser:testpass' | chpasswd;
+        /usr/sbin/sshd -D -p 2223
+      "
+    ports:
+      - "2223:2223"
+
+  docker-bash:
+    image: ubuntu:22.04
+    command: ["sleep", "infinity"]
+    tmpfs:
+      - /tmp
+      - /workspace
+
+  docker-pwsh:
+    image: mcr.microsoft.com/powershell:latest
+    command: ["sleep", "infinity"]
+    tmpfs:
+      - /tmp
+      - /workspace
