@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 // SSHTransport implements Transport over SSH using golang.org/x/crypto/ssh.
@@ -62,10 +63,16 @@ func (t *SSHTransport) Connect(ctx context.Context) error {
 		return fmt.Errorf("building auth methods: %w", err)
 	}
 
+	hostKeyCallback, err := buildHostKeyCallback(t.cfg.InsecureIgnoreHostKey)
+	if err != nil {
+		t.state = StateError
+		return fmt.Errorf("host key verification: %w", err)
+	}
+
 	sshConfig := &ssh.ClientConfig{
 		User:            user,
 		Auth:            authMethods,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // TODO: proper host key verification
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         time.Duration(t.cfg.Timeout) * time.Millisecond,
 	}
 	if sshConfig.Timeout == 0 {
@@ -319,6 +326,27 @@ func parseSSHHost(hostStr string) (user, host string) {
 		return u, h
 	}
 	return "", hostStr
+}
+
+// buildHostKeyCallback returns a host key callback.
+// If insecure is true, accepts any host key.
+// Otherwise, checks ~/.ssh/known_hosts.
+func buildHostKeyCallback(insecure bool) (ssh.HostKeyCallback, error) {
+	if insecure {
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	knownHostsPath := filepath.Join(expandHome("~/.ssh"), "known_hosts")
+	if _, err := os.Stat(knownHostsPath); err != nil {
+		// No known_hosts file — fall back to insecure with a note
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	callback, err := knownhosts.New(knownHostsPath)
+	if err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", knownHostsPath, err)
+	}
+	return callback, nil
 }
 
 // buildAuthMethods creates SSH auth methods from available sources.

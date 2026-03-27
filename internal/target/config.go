@@ -12,14 +12,15 @@ import (
 
 // TargetConfig holds the configuration for a single target.
 type TargetConfig struct {
-	Type         string `json:"type"`                   // "ssh" or "docker"
-	Host         string `json:"host,omitempty"`         // SSH: user@hostname
-	Port         int    `json:"port,omitempty"`         // SSH: port (default 22)
-	IdentityFile string `json:"identityFile,omitempty"` // SSH: path to key
-	Container    string `json:"container,omitempty"`    // Docker: container name/ID
-	Cwd          string `json:"cwd,omitempty"`          // Remote working directory
-	Shell        string `json:"shell,omitempty"`        // "bash" or "pwsh" (optional for docker)
-	Timeout      int    `json:"timeout,omitempty"`      // Connection timeout in ms
+	Type                  string `json:"type"`                            // "ssh" or "docker"
+	Host                  string `json:"host,omitempty"`                  // SSH: user@hostname
+	Port                  int    `json:"port,omitempty"`                  // SSH: port (default 22)
+	IdentityFile          string `json:"identityFile,omitempty"`          // SSH: path to key
+	Container             string `json:"container,omitempty"`             // Docker: container name/ID
+	Cwd                   string `json:"cwd,omitempty"`                   // Remote working directory
+	Shell                 string `json:"shell,omitempty"`                 // "bash" or "pwsh" (optional for docker)
+	Timeout               int    `json:"timeout,omitempty"`               // Connection timeout in ms
+	InsecureIgnoreHostKey bool   `json:"insecureIgnoreHostKey,omitempty"` // SSH: skip host key verification
 }
 
 // Config holds the full tramp configuration from a tramp.json file.
