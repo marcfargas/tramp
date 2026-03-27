@@ -35,6 +35,83 @@ jobs:
         if: runner.os == 'Linux'
         run: go test ./... -race -short -count=1
 
+  plugin:
+    name: Plugin (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        run: go build -o .claude-plugin/bin/tramp${{ runner.os == 'Windows' && '.exe' || '' }} ./cmd/tramp
+
+      - name: Verify bootstrap detects platform (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          # Bootstrap should find the pre-built binary and exec it
+          export CLAUDE_PLUGIN_ROOT="$(pwd)"
+          output=$(echo '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 .claude-plugin/bin/bootstrap.sh serve 2>/dev/null || true)
+          echo "$output"
+          if echo "$output" | grep -q '"serverInfo"'; then
+            echo "Plugin bootstrap OK — MCP server responded"
+          else
+            echo "FAIL: MCP server did not respond to initialize"
+            exit 1
+          fi
+
+      - name: Verify bootstrap detects platform (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          export CLAUDE_PLUGIN_ROOT="$(pwd)"
+          output=$(echo '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | timeout 5 .claude-plugin/bin/bootstrap.sh serve 2>/dev/null || true)
+          echo "$output"
+          if echo "$output" | grep -q '"serverInfo"'; then
+            echo "Plugin bootstrap OK — MCP server responded"
+          else
+            echo "FAIL: MCP server did not respond to initialize"
+            exit 1
+          fi
+
+      - name: Verify plugin.json
+        shell: bash
+        run: |
+          if [ ! -f .claude-plugin/plugin.json ]; then
+            echo "FAIL: plugin.json missing"
+            exit 1
+          fi
+          # Check required fields
+          name=$(jq -r '.name' .claude-plugin/plugin.json)
+          version=$(jq -r '.version' .claude-plugin/plugin.json)
+          if [ "$name" != "tramp" ] || [ -z "$version" ]; then
+            echo "FAIL: plugin.json invalid (name=$name, version=$version)"
+            exit 1
+          fi
+          echo "plugin.json OK (name=$name, version=$version)"
+
+      - name: Verify .mcp.json
+        shell: bash
+        run: |
+          if [ ! -f .claude-plugin/.mcp.json ]; then
+            echo "FAIL: .mcp.json missing"
+            exit 1
+          fi
+          cmd=$(jq -r '.mcpServers.tramp.command' .claude-plugin/.mcp.json)
+          if [ -z "$cmd" ]; then
+            echo "FAIL: .mcp.json has no tramp server command"
+            exit 1
+          fi
+          echo ".mcp.json OK (command=$cmd)"
+
   integration-docker:
     name: Integration (docker-${{ matrix.shell }})
     runs-on: ubuntu-latest
