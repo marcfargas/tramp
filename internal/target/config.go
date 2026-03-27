@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 )
 
 // TargetConfig holds the configuration for a single target.
@@ -94,4 +95,29 @@ func LoadConfigFromFile(path string) (*Config, error) {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 	return ParseConfig(data)
+}
+
+// PersistTarget adds a target to the project's .claude/tramp.json file.
+func PersistTarget(projectDir, name string, config TargetConfig) error {
+	dir := filepath.Join(projectDir, ".claude")
+	path := filepath.Join(dir, "tramp.json")
+
+	// Load existing or create new
+	cfg, _ := LoadConfigFromFile(path)
+	if cfg.Targets == nil {
+		cfg.Targets = make(map[string]TargetConfig)
+	}
+	cfg.Targets[name] = config
+
+	// Ensure directory exists
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating %s: %w", dir, err)
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+
+	return os.WriteFile(path, data, 0644)
 }

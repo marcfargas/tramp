@@ -42,7 +42,7 @@ func TestHandleTargetAdd(t *testing.T) {
 
 	err := s.TargetAdd(context.Background(), "dev", target.TargetConfig{
 		Type: "ssh", Host: "user@host", Shell: "bash",
-	})
+	}, false)
 	if err != nil {
 		t.Fatalf("TargetAdd failed: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestHandleTargetAddRejectsInvalid(t *testing.T) {
 
 	err := s.TargetAdd(context.Background(), "dev", target.TargetConfig{
 		Type: "ssh", // missing host
-	})
+	}, false)
 	if err == nil {
 		t.Error("expected error for missing host")
 	}

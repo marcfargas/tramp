@@ -40,9 +40,10 @@ func NewService(projectDir string) *Service {
 	p := pool.New(factory)
 
 	svc := &Service{
-		Manager:  mgr,
-		Pool:     p,
-		forwards: make(map[string]*ForwardEntry),
+		Manager:    mgr,
+		Pool:       p,
+		ProjectDir: projectDir,
+		forwards:   make(map[string]*ForwardEntry),
 	}
 
 	// Load config files
@@ -64,21 +65,26 @@ func loadConfigs(mgr *target.Manager, projectDir string) {
 // registerTargetTools registers target_add, target_switch, target_remove, target_list, target_status.
 func registerTargetTools(server *gomcp.Server, svc *Service) {
 	type TargetAddInput struct {
-		Name   string `json:"name" jsonschema:"target name"`
-		Config string `json:"config" jsonschema:"target config as JSON string"`
+		Name    string `json:"name" jsonschema:"target name"`
+		Config  string `json:"config" jsonschema:"target config as JSON string"`
+		Persist bool   `json:"persist" jsonschema:"if true, save to .claude/tramp.json (default false)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "target_add",
-		Description: "Add a new remote target. Config is a JSON object with type (ssh/docker), host/container, cwd, shell, etc.",
+		Description: "Add a new remote target. Config is a JSON object with type (ssh/docker), host/container, cwd, shell, etc. Set persist=true to save to project config.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args TargetAddInput) (*gomcp.CallToolResult, any, error) {
 		var cfg target.TargetConfig
 		if err := json.Unmarshal([]byte(args.Config), &cfg); err != nil {
 			return toolError("Invalid config JSON: " + err.Error()), nil, nil
 		}
-		if err := svc.TargetAdd(ctx, args.Name, cfg); err != nil {
+		if err := svc.TargetAdd(ctx, args.Name, cfg, args.Persist); err != nil {
 			return toolError(err.Error()), nil, nil
 		}
-		return toolText(fmt.Sprintf("Target %q added.", args.Name)), nil, nil
+		msg := fmt.Sprintf("Target %q added.", args.Name)
+		if args.Persist {
+			msg += " Saved to .claude/tramp.json."
+		}
+		return toolText(msg), nil, nil
 	})
 
 	type TargetSwitchInput struct {

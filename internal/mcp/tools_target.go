@@ -20,14 +20,15 @@ type ForwardEntry struct {
 
 // Service holds shared state for all MCP tool handlers.
 type Service struct {
-	Manager  *target.Manager
-	Pool     *pool.Pool
-	forwards map[string]*ForwardEntry // keyed by localAddr
-	fwdMu    sync.Mutex
+	Manager    *target.Manager
+	Pool       *pool.Pool
+	ProjectDir string
+	forwards   map[string]*ForwardEntry // keyed by localAddr
+	fwdMu      sync.Mutex
 }
 
-// TargetAdd adds a new dynamic target.
-func (s *Service) TargetAdd(ctx context.Context, name string, config target.TargetConfig) error {
+// TargetAdd adds a new target. If persist is true, writes to .claude/tramp.json.
+func (s *Service) TargetAdd(ctx context.Context, name string, config target.TargetConfig, persist bool) error {
 	// Validate config
 	switch config.Type {
 	case "ssh":
@@ -42,7 +43,14 @@ func (s *Service) TargetAdd(ctx context.Context, name string, config target.Targ
 		return fmt.Errorf("unknown type %q (expected ssh or docker)", config.Type)
 	}
 
-	return s.Manager.Add(name, config)
+	if err := s.Manager.Add(name, config); err != nil {
+		return err
+	}
+
+	if persist && s.ProjectDir != "" {
+		return target.PersistTarget(s.ProjectDir, name, config)
+	}
+	return nil
 }
 
 // TargetSwitch switches to a target, eagerly connecting to validate.
