@@ -4,25 +4,47 @@ TRAMP-like transparent remote execution for AI coding agents. MCP server that ro
 
 The agent stays local. Tools execute remotely.
 
-## Quick Start
+## Install
+
+### From GitHub Releases
+
+Download the latest binary for your platform from [Releases](https://github.com/marcfargas/tramp/releases), then:
 
 ```bash
-# Build
-go build -o tramp ./cmd/tramp
+# Linux/macOS
+chmod +x tramp
+sudo mv tramp /usr/local/bin/
 
-# Add to Claude Code
+# Windows — move tramp.exe somewhere in your PATH
+```
+
+### From Source
+
+```bash
+go install github.com/marcfargas/tramp/cmd/tramp@latest
+```
+
+### Add to Claude Code
+
+```bash
+claude mcp add tramp -- tramp serve
+```
+
+Or with a full path if not in PATH:
+
+```bash
 claude mcp add tramp -- /path/to/tramp serve
 ```
 
-Then in a Claude Code session:
+## Quick Start
+
+In a Claude Code session:
 
 ```
-> Use target_add to add a server, then target_switch to connect:
->
 > target_add("myserver", {"type":"ssh","host":"user@myserver.example.com","shell":"bash","cwd":"/home/user/project"})
 > target_switch("myserver")
->
-> # All tramp tools now execute on myserver
+
+# All tramp tools now execute on myserver
 > bash("ls -la")
 > read("/etc/hostname")
 ```
@@ -35,8 +57,8 @@ All remote tools accept an optional `target` parameter to specify which target t
 
 | Tool | Description |
 |------|-------------|
-| `target_add` | Add a remote target (SSH or Docker) |
-| `target_switch` | Connect and switch active target |
+| `target_add` | Add a remote target (SSH or Docker). Set `persist: true` to save to `.claude/tramp.json` |
+| `target_switch` | Connect and switch active target. Use `"local"` to disconnect |
 | `target_remove` | Remove a target |
 | `target_list` | List all targets with status |
 | `target_status` | Show active target details |
@@ -48,18 +70,26 @@ Mirror Claude Code's built-in tool signatures:
 | Tool | Description |
 |------|-------------|
 | `bash` | Execute shell command |
-| `read` | Read file contents |
-| `write` | Write file |
+| `read` | Read file contents (with offset/limit) |
+| `write` | Write/overwrite file |
 | `edit` | Find-and-replace edit |
 | `glob` | File pattern matching |
 | `grep` | Content search |
 | `ls` | List directory |
 
+### Port Forwarding (SSH only)
+
+| Tool | Description |
+|------|-------------|
+| `forward_port` | Create SSH tunnel (local port → remote address) |
+| `forward_list` | List active port forwards |
+| `forward_stop` | Stop a port forward |
+
 ## Configuration
 
 ### Dynamic Targets (Primary)
 
-Add targets on the fly via the `target_add` tool. Stored in memory for the session.
+Add targets on the fly via `target_add`. Stored in memory for the session. Use `persist: true` to save to the project config file.
 
 ### File-based
 
@@ -84,7 +114,7 @@ Create `.claude/tramp.json` in your project or `~/.claude/tramp.json` globally:
 }
 ```
 
-Project config overrides global by target name.
+Project config overrides global by target name. The `default` target auto-connects on startup.
 
 ## Transport Types
 
@@ -98,14 +128,17 @@ Project config overrides global by target name.
   "identityFile": "~/.ssh/id_ed25519",
   "cwd": "/remote/working/directory",
   "shell": "bash",
-  "timeout": 60000
+  "timeout": 60000,
+  "insecureIgnoreHostKey": false
 }
 ```
 
 - Native multiplexed channels (`golang.org/x/crypto/ssh`) — no sentinel protocol
 - SFTP for file I/O — binary-safe, no base64 encoding
 - Auth: SSH agent (Unix + Windows OpenSSH) → identity file → default keys
+- Host key verification via `~/.ssh/known_hosts` (set `insecureIgnoreHostKey: true` to skip)
 - Persistent connection, reused across tool calls
+- Port forwarding support
 
 ### Docker
 
@@ -133,14 +166,6 @@ When a target is active, tramp exposes a `tramp://context` MCP resource that inj
 ## Shells
 
 Both **bash** (POSIX) and **PowerShell** (pwsh) are supported on remote targets. Shell drivers handle escaping and command generation per-shell.
-
-## Building
-
-```bash
-go build -o tramp ./cmd/tramp
-```
-
-Single binary, no runtime dependencies.
 
 ## License
 
