@@ -289,7 +289,7 @@ func (t *SSHTransport) detectRemoteInfo(ctx context.Context) (*RemoteInfo, error
 }
 
 // execSimple runs a command and returns stdout. Used during setup probes.
-func (t *SSHTransport) execSimple(ctx context.Context, command string) (string, error) {
+func (t *SSHTransport) execSimple(_ context.Context, command string) (string, error) {
 	session, err := t.client.NewSession()
 	if err != nil {
 		return "", err
@@ -315,8 +315,8 @@ func (t *SSHTransport) resolvePath(path string) string {
 
 // parseSSHHost splits "user@host" into user and host parts.
 func parseSSHHost(hostStr string) (user, host string) {
-	if i := strings.Index(hostStr, "@"); i >= 0 {
-		return hostStr[:i], hostStr[i+1:]
+	if u, h, ok := strings.Cut(hostStr, "@"); ok {
+		return u, h
 	}
 	return "", hostStr
 }
