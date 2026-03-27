@@ -188,7 +188,3 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	// TODO: implemented in Task 11
 }
 
-// registerContextResource is implemented in resource.go
-func registerContextResource(server *gomcp.Server, svc *Service) {
-	// TODO: implemented in Task 12
-}
