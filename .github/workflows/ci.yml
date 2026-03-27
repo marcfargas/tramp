@@ -58,26 +58,21 @@ jobs:
         shell: bash
         run: |
           export CLAUDE_PLUGIN_ROOT="$(pwd)"
-          # Write init request to a file, pipe it to the server, capture output
-          echo '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' > /tmp/init.json
-          # Run server with stdin from file, kill after 3s
-          output=$(.claude-plugin/bin/bootstrap.sh serve < /tmp/init.json &
-            PID=$!
-            sleep 3
-            kill $PID 2>/dev/null || true
-            wait $PID 2>/dev/null || true
-          )
-          # Alternative: just run the binary directly to verify it starts
-          .claude-plugin/bin/tramp* serve < /tmp/init.json > /tmp/mcp_output.json &
-          PID=$!
-          sleep 2
-          kill $PID 2>/dev/null || true
-          wait $PID 2>/dev/null || true
-          cat /tmp/mcp_output.json
-          if grep -q '"serverInfo"' /tmp/mcp_output.json; then
+          # Find the binary
+          if [ -f .claude-plugin/bin/tramp.exe ]; then
+            BINARY=.claude-plugin/bin/tramp.exe
+          else
+            BINARY=.claude-plugin/bin/tramp
+          fi
+          # Use a pipe that stays open long enough for the server to respond
+          # The { sleep; } block keeps stdin open while we read the response
+          INIT='{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+          output=$(printf '%s\n' "$INIT" | { cat; sleep 2; } | timeout 5 "$BINARY" serve 2>/dev/null || true)
+          echo "$output"
+          if echo "$output" | grep -q '"serverInfo"'; then
             echo "Plugin OK — MCP server responded with serverInfo"
           else
-            echo "FAIL: MCP server did not respond to initialize"
+            echo "FAIL: MCP server did not respond"
             exit 1
           fi
 
