@@ -75,8 +75,11 @@ func registerTargetTools(server *gomcp.Server, svc *Service) {
 		Persist bool   `json:"persist" jsonschema:"if true, save to .claude/tramp.json (default false)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
-		Name:        "target_add",
-		Description: "Add a new remote target. Config is a JSON object with type (ssh/docker), host/container, cwd, shell, etc. Set persist=true to save to project config.",
+		Name: "target_add",
+		Description: `Add a new remote target. Config is a JSON string with these fields:
+SSH: {"type":"ssh","host":"user@hostname","port":22,"shell":"bash","cwd":"/path","identityFile":"~/.ssh/key","insecureIgnoreHostKey":false,"timeout":60000}
+Docker: {"type":"docker","container":"name","shell":"bash","cwd":"/path","timeout":60000}
+Only type + host (SSH) or type + container (Docker) are required. Set persist=true to save to .claude/tramp.json.`,
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args TargetAddInput) (*gomcp.CallToolResult, any, error) {
 		var cfg target.TargetConfig
 		if err := json.Unmarshal([]byte(args.Config), &cfg); err != nil {

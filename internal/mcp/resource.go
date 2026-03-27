@@ -20,8 +20,13 @@ func registerContextResource(server *gomcp.Server, svc *Service) {
 		if tgt == nil {
 			return &gomcp.ReadResourceResult{
 				Contents: []*gomcp.ResourceContents{{
-					URI:  "tramp://context",
-					Text: "No remote target active. Tramp tools (bash, read, write, edit, glob, grep, ls) are available but require an active target. Use target_add and target_switch to connect.",
+					URI: "tramp://context",
+					Text: `No remote target active. Use target_add and target_switch to connect.
+
+TARGET CONFIG SCHEMA (for target_add):
+SSH: {"type":"ssh","host":"user@hostname","port":22,"shell":"bash","cwd":"/path","identityFile":"~/.ssh/id_ed25519","insecureIgnoreHostKey":true,"timeout":60000}
+Docker: {"type":"docker","container":"name","shell":"bash","cwd":"/path","timeout":60000}
+Note: Do NOT pass SSH CLI flags. Use the config fields above. All fields except type and host/container are optional.`,
 				}},
 			}, nil
 		}
@@ -62,7 +67,12 @@ NETWORK BOUNDARY:
 - Your built-in tools (Read, Write, Edit, Bash, Glob, Grep, LS) operate on the LOCAL machine where you are running.
 - To operate on the remote target, use the tramp MCP tools: bash, read, write, edit, glob, grep, ls. They have the same signatures as your built-ins.
 - Local paths and remote paths are different filesystems. Do not mix them.
-- If you need to transfer files between local and remote, use local Read + tramp write (or vice versa).`,
+- If you need to transfer files between local and remote, use local Read + tramp write (or vice versa).
+
+TARGET CONFIG SCHEMA (for target_add):
+SSH: {"type":"ssh","host":"user@hostname","port":22,"shell":"bash","cwd":"/path","identityFile":"~/.ssh/id_ed25519","insecureIgnoreHostKey":true,"timeout":60000}
+Docker: {"type":"docker","container":"name","shell":"bash","cwd":"/path","timeout":60000}
+Note: Do NOT pass SSH CLI flags (like -o StrictHostKeyChecking=no). Use the config fields above instead.`,
 			tgt.Name, targetInfo, envInfo, cwdInfo)
 
 		return &gomcp.ReadResourceResult{
