@@ -6,15 +6,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
-
-	winio "github.com/Microsoft/go-winio"
 
 	"github.com/marcfargas/tramp/internal/shell"
 	"github.com/marcfargas/tramp/internal/target"
@@ -365,30 +361,7 @@ func buildAuthMethods(identityFile string) ([]ssh.AuthMethod, error) {
 	return methods, nil
 }
 
-// sshAgentConn connects to the SSH agent. Returns nil if unavailable.
-// On Windows, connects to the OpenSSH agent named pipe.
-// On Unix, connects via SSH_AUTH_SOCK.
-func sshAgentConn() net.Conn {
-	if runtime.GOOS == "windows" {
-		// Windows OpenSSH agent uses a named pipe
-		conn, err := winio.DialPipe(`\\.\pipe\openssh-ssh-agent`, nil)
-		if err != nil {
-			return nil
-		}
-		return conn
-	}
-
-	// Unix: use SSH_AUTH_SOCK
-	socket := os.Getenv("SSH_AUTH_SOCK")
-	if socket == "" {
-		return nil
-	}
-	conn, err := net.Dial("unix", socket)
-	if err != nil {
-		return nil
-	}
-	return conn
-}
+// sshAgentConn is implemented per-platform in agent_windows.go and agent_unix.go.
 
 // expandHome replaces ~ with the user's home directory.
 func expandHome(path string) string {
