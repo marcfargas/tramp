@@ -213,16 +213,20 @@ func (s *Service) RemoteLS(ctx context.Context, targetName, path string) (string
 // registerRemoteTools registers bash, read, write, edit, glob, grep, ls.
 func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	type BashInput struct {
-		Target      string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target      string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		Command     string `json:"command" jsonschema:"the command to execute on the remote target"`
-		Description string `json:"description" jsonschema:"description of what the command does"`
-		Timeout     int    `json:"timeout" jsonschema:"timeout in milliseconds (0 for no timeout)"`
+		Description string `json:"description,omitempty" jsonschema:"description of what the command does"`
+		Timeout     *int   `json:"timeout,omitempty" jsonschema:"timeout in milliseconds"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "bash",
 		Description: "Execute a shell command on a remote target. Uses active target unless 'target' is specified.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args BashInput) (*gomcp.CallToolResult, any, error) {
-		result, name, err := svc.RemoteBash(ctx, args.Target, args.Command, args.Timeout)
+		timeout := 0
+		if args.Timeout != nil {
+			timeout = *args.Timeout
+		}
+		result, name, err := svc.RemoteBash(ctx, args.Target, args.Command, timeout)
 		if err != nil {
 			return toolError(err.Error()), nil, nil
 		}
@@ -235,16 +239,23 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	})
 
 	type ReadInput struct {
-		Target   string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target   string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		FilePath string `json:"file_path" jsonschema:"absolute path to the file to read"`
-		Offset   int    `json:"offset" jsonschema:"line number to start reading from (1-based)"`
-		Limit    int    `json:"limit" jsonschema:"number of lines to read"`
+		Offset   *int   `json:"offset,omitempty" jsonschema:"line number to start reading from (1-based)"`
+		Limit    *int   `json:"limit,omitempty" jsonschema:"number of lines to read"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "read",
 		Description: "Read a file from a remote target. Uses active target unless 'target' is specified.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args ReadInput) (*gomcp.CallToolResult, any, error) {
-		content, err := svc.RemoteRead(ctx, args.Target, args.FilePath, args.Offset, args.Limit)
+		offset, limit := 0, 0
+		if args.Offset != nil {
+			offset = *args.Offset
+		}
+		if args.Limit != nil {
+			limit = *args.Limit
+		}
+		content, err := svc.RemoteRead(ctx, args.Target, args.FilePath, offset, limit)
 		if err != nil {
 			return toolError(err.Error()), nil, nil
 		}
@@ -252,7 +263,7 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	})
 
 	type WriteInput struct {
-		Target   string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target   string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		FilePath string `json:"file_path" jsonschema:"absolute path to the file to write"`
 		Content  string `json:"content" jsonschema:"content to write to the file"`
 	}
@@ -267,24 +278,25 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	})
 
 	type EditInput struct {
-		Target     string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target     string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		FilePath   string `json:"file_path" jsonschema:"absolute path to the file to edit"`
 		OldString  string `json:"old_string" jsonschema:"text to find and replace"`
 		NewString  string `json:"new_string" jsonschema:"replacement text"`
-		ReplaceAll bool   `json:"replace_all" jsonschema:"replace all occurrences (default false)"`
+		ReplaceAll *bool  `json:"replace_all,omitempty" jsonschema:"replace all occurrences (default false)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "edit",
 		Description: "Find-and-replace edit on a file on a remote target. Uses active target unless 'target' is specified.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args EditInput) (*gomcp.CallToolResult, any, error) {
-		if err := svc.RemoteEdit(ctx, args.Target, args.FilePath, args.OldString, args.NewString, args.ReplaceAll); err != nil {
+		replaceAll := args.ReplaceAll != nil && *args.ReplaceAll
+		if err := svc.RemoteEdit(ctx, args.Target, args.FilePath, args.OldString, args.NewString, replaceAll); err != nil {
 			return toolError(err.Error()), nil, nil
 		}
 		return toolText(fmt.Sprintf("Edited %s.", args.FilePath)), nil, nil
 	})
 
 	type GlobInput struct {
-		Target  string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target  string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		Pattern string `json:"pattern" jsonschema:"glob pattern to match files"`
 		Path    string `json:"path" jsonschema:"directory to search in (defaults to target cwd)"`
 	}
@@ -300,19 +312,23 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	})
 
 	type GrepInput struct {
-		Target     string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target     string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		Pattern    string `json:"pattern" jsonschema:"regex pattern to search for"`
-		Path       string `json:"path" jsonschema:"file or directory to search in (defaults to target cwd)"`
-		Type       string `json:"type" jsonschema:"file type filter (e.g. js, py, go)"`
-		Glob       string `json:"glob" jsonschema:"glob pattern to filter files"`
-		OutputMode string `json:"output_mode" jsonschema:"content, files_with_matches, or count"`
-		Context    int    `json:"context" jsonschema:"lines of context around matches"`
+		Path       string `json:"path,omitempty" jsonschema:"file or directory to search in (defaults to target cwd)"`
+		Type       string `json:"type,omitempty" jsonschema:"file type filter (e.g. js, py, go)"`
+		Glob       string `json:"glob,omitempty" jsonschema:"glob pattern to filter files"`
+		OutputMode string `json:"output_mode,omitempty" jsonschema:"content, files_with_matches, or count"`
+		Context    *int   `json:"context,omitempty" jsonschema:"lines of context around matches"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "grep",
 		Description: "Search file contents on a remote target. Uses active target unless 'target' is specified.",
 	}, func(ctx context.Context, req *gomcp.CallToolRequest, args GrepInput) (*gomcp.CallToolResult, any, error) {
-		result, err := svc.RemoteGrep(ctx, args.Target, args.Pattern, args.Path, args.Type, args.Glob, args.OutputMode, args.Context)
+		contextLines := 0
+		if args.Context != nil {
+			contextLines = *args.Context
+		}
+		result, err := svc.RemoteGrep(ctx, args.Target, args.Pattern, args.Path, args.Type, args.Glob, args.OutputMode, contextLines)
 		if err != nil {
 			return toolError(err.Error()), nil, nil
 		}
@@ -320,8 +336,8 @@ func registerRemoteTools(server *gomcp.Server, svc *Service) {
 	})
 
 	type LSInput struct {
-		Target string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
-		Path   string `json:"path" jsonschema:"directory path to list (defaults to target cwd)"`
+		Target string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
+		Path   string `json:"path,omitempty" jsonschema:"directory path to list (defaults to target cwd)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
 		Name:        "ls",

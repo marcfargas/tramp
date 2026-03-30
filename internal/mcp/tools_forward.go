@@ -85,9 +85,9 @@ func (s *Service) ForwardStop(localAddr string) error {
 // registerForwardTools registers forward_port, forward_list, forward_stop.
 func registerForwardTools(server *gomcp.Server, svc *Service) {
 	type ForwardPortInput struct {
-		Target     string `json:"target" jsonschema:"target name (optional, uses active target if empty)"`
+		Target     string `json:"target,omitempty" jsonschema:"target name (optional, uses active target if empty)"`
 		LocalPort  string `json:"local_port" jsonschema:"local port to listen on (e.g. 5901)"`
-		RemoteHost string `json:"remote_host" jsonschema:"remote host to forward to (default: 127.0.0.1)"`
+		RemoteHost string `json:"remote_host,omitempty" jsonschema:"remote host to forward to (default: 127.0.0.1)"`
 		RemotePort string `json:"remote_port" jsonschema:"remote port to forward to (e.g. 5432)"`
 	}
 	gomcp.AddTool(server, &gomcp.Tool{
